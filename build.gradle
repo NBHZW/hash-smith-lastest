@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'me.champeau.jmh' version '0.7.2'
 }
 
 group = 'com.example'
@@ -17,9 +18,20 @@ repositories {
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    jmhImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 }
 
 test {
     useJUnitPlatform()
+}
+
+jmh {
+    warmupIterations = 1
+    iterations = 2
+    fork = 1
+    benchmarkMode = ['thrpt']
+    timeUnit = 'ms'
 }
 
