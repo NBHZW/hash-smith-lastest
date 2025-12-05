@@ -52,6 +52,20 @@ public class Demo {
 ```
 - Defaults: warmup 1, iterations 2, fork 1, mode `thrpt`, time unit `ms`.
 
+### Current Results (ns/op, size = 10,000)
+| Benchmark | ns/op (≈) |
+| --- | --- |
+| jdkGetHit | 16.93 |
+| swissGetHit | 24.93 |
+| jdkGetMiss | 14.80 |
+| swissGetMiss | 12.40 |
+| jdkIterate | 47,130 | <!-- ≈47.13 µs -->
+| swissIterate | 21,360 | <!-- ≈21.36 µs -->
+| jdkPutHit | 7.72 |
+| swissPutHit | 12.78 |
+| jdkPutMiss | 31.65 |
+| swissPutMiss | 26.09 |
+
 ## Design Notes
 - Control bytes: `EMPTY=0x80`, `DELETED=0xFE`, low 7 bits store `h2` fingerprint.
 - Group size: 16 slots (aligned to 128-bit SIMD). Load factor ~7/8 triggers resize.
