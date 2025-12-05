@@ -58,6 +58,7 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 
 	private void init(int desiredCapacity) {
 		int nGroups = Math.max(1, (desiredCapacity + DEFAULT_GROUP_SIZE - 1) / DEFAULT_GROUP_SIZE);
+		nGroups = ceilPow2(nGroups);
 		this.capacity = nGroups * DEFAULT_GROUP_SIZE;
 
 		this.ctrl = new byte[capacity];
@@ -86,6 +87,11 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 	private int calcMaxLoad(int cap) {
 		// similar to Abseil's 7/8 load factor reserve
 		return (cap * 7) >>> 3;
+	}
+
+	private int ceilPow2(int x) {
+		if (x <= 1) return 1;
+		return Integer.highestOneBit(x - 1) << 1;
 	}
 
 	private int numGroups() {
@@ -124,7 +130,9 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 		Object[] oldKeys = this.keys;
 		Object[] oldVals = this.vals;
 
-		this.capacity = Math.max(newCapacity, DEFAULT_GROUP_SIZE);
+		int desiredGroups = Math.max(1, (Math.max(newCapacity, DEFAULT_GROUP_SIZE) + DEFAULT_GROUP_SIZE - 1) / DEFAULT_GROUP_SIZE);
+		desiredGroups = ceilPow2(desiredGroups);
+		this.capacity = desiredGroups * DEFAULT_GROUP_SIZE;
 		this.ctrl = new byte[this.capacity];
 		Arrays.fill(this.ctrl, EMPTY);
 		this.keys = new Object[this.capacity];
@@ -151,7 +159,8 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 	private void insertFresh(K key, V value, int h1, byte h2) {
 		int nGroups = numGroups();
 		if (nGroups == 0) { throw new IllegalStateException("No groups allocated"); }
-		int g = h1 % nGroups;
+		int mask = nGroups - 1;
+		int g = h1 & mask;
 		for (;;) {
 			int base = g * DEFAULT_GROUP_SIZE;
 			for (int j = 0; j < DEFAULT_GROUP_SIZE; j++) {
@@ -164,8 +173,7 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 					return;
 				}
 			}
-			g++;
-			if (g == nGroups) g = 0;
+			g = (g + 1) & mask;
 		}
 	}
 
@@ -208,8 +216,9 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 		int h1 = h1(h);
 		byte h2 = h2(h);
 		int nGroups = numGroups();
+		int mask = nGroups - 1;
 		int firstTombstone = -1;
-		int g = h1 % nGroups;
+		int g = h1 & mask;
 		for (;;) {
 			int base = g * DEFAULT_GROUP_SIZE;
 			if (useSimd) {
@@ -254,8 +263,7 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 					}
 				}
 			}
-			g++;
-			if (g == nGroups) g = 0;
+			g = (g + 1) & mask;
 		}
 	}
 
@@ -313,7 +321,8 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 		int h1 = h1(h);
 		byte h2 = h2(h);
 		int nGroups = numGroups();
-		int g = h1 % nGroups;
+		int mask = nGroups - 1;
+		int g = h1 & mask;
 		for (;;) {
 			int base = g * DEFAULT_GROUP_SIZE;
 			if (useSimd) {
@@ -336,8 +345,7 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 					}
 				}
 			}
-			g++;
-			if (g == nGroups) g = 0;
+			g = (g + 1) & mask;
 		}
 	}
 
