@@ -8,12 +8,16 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.VectorSpecies;
 
 /**
  * Skeleton for a SwissTable-inspired Map implementation.
  * All methods are not implemented yet; logic will be filled later.
  */
 public class SwissMap<K, V> extends AbstractMap<K, V> {
+
+	public enum Path { SCALAR, SIMD }
 
 	/* Control byte values */
 	private static final byte EMPTY = (byte) 0x80;    // empty slot
@@ -36,6 +40,8 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 	private int tombstones;  // deleted slots
 	private int capacity;    // total slots (length of ctrl/keys/vals)
 	private int maxLoad;     // threshold to trigger rehash/resize
+	private boolean useSimd = true;
+	private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
 
 	public SwissMap() {
 		this(16);
@@ -43,6 +49,11 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 
 	public SwissMap(int initialCapacity) {
 		init(initialCapacity);
+	}
+
+	public SwissMap(Path path) {
+		this(16);
+		this.useSimd = (path == Path.SIMD);
 	}
 
 	private void init(int desiredCapacity) {
@@ -90,6 +101,16 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 	private boolean isEmpty(byte c) { return c == EMPTY; }
 	private boolean isDeleted(byte c) { return c == DELETED; }
 	private boolean isFull(byte c) { return c >= 0 && c <= H2_MASK; } // H2 in [0,127]
+
+	/* SIMD helpers (fallback to 0 mask when not usable) */
+	private long simdEq(byte[] array, int base, byte value) {
+		if (!useSimd || base + SPECIES.length() > array.length) return 0L;
+		ByteVector v = ByteVector.fromArray(SPECIES, array, base);
+		return v.eq(value).toLong();
+	}
+
+	private long simdEmpty(byte[] array, int base) { return simdEq(array, base, EMPTY); }
+	private long simdDeleted(byte[] array, int base) { return simdEq(array, base, DELETED); }
 
 	/* Resize/rehash skeletons (implementation to be filled later) */
 	private void maybeResize() {
@@ -191,24 +212,46 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 		int g = h1 % nGroups;
 		for (;;) {
 			int base = g * DEFAULT_GROUP_SIZE;
-			for (int j = 0; j < DEFAULT_GROUP_SIZE; j++) {
-				int idx = base + j;
-				byte c = ctrl[idx];
-				if (isEmpty(c)) {
-					// reuse earliest tombstone if we saw one; ensures we still
-					// scan for an existing key before deciding insertion slot
+			if (useSimd) {
+				long eqMask = simdEq(ctrl, base, h2);
+				while (eqMask != 0) {
+					int bit = Long.numberOfTrailingZeros(eqMask);
+					int idx = base + bit;
+					if (Objects.equals(keys[idx], key)) {
+						@SuppressWarnings("unchecked") V old = (V) vals[idx];
+						vals[idx] = value;
+						return old;
+					}
+					eqMask &= eqMask - 1; // clear LSB
+				}
+				if (firstTombstone < 0) {
+					long delMask = simdDeleted(ctrl, base);
+					if (delMask != 0) firstTombstone = base + Long.numberOfTrailingZeros(delMask);
+				}
+				long emptyMask = simdEmpty(ctrl, base);
+				if (emptyMask != 0) {
+					int idx = base + Long.numberOfTrailingZeros(emptyMask);
 					int target = (firstTombstone >= 0) ? firstTombstone : idx;
 					return insertAt(target, key, value, h2);
 				}
-				if (isDeleted(c) && firstTombstone < 0) {
-					firstTombstone = idx;
-					continue;
-				}
-				if (isFull(c) && c == h2 && Objects.equals(keys[idx], key)) {
-					@SuppressWarnings("unchecked")
-					V old = (V) vals[idx];
-					vals[idx] = value;
-					return old;
+			} else {
+				for (int j = 0; j < DEFAULT_GROUP_SIZE; j++) {
+					int idx = base + j;
+					byte c = ctrl[idx];
+					if (isEmpty(c)) {
+						int target = (firstTombstone >= 0) ? firstTombstone : idx;
+						return insertAt(target, key, value, h2);
+					}
+					if (isDeleted(c) && firstTombstone < 0) {
+						firstTombstone = idx;
+						continue;
+					}
+					if (isFull(c) && c == h2 && Objects.equals(keys[idx], key)) {
+						@SuppressWarnings("unchecked") 
+						V old = (V) vals[idx];
+						vals[idx] = value;
+						return old;
+					}
 				}
 			}
 			g++;
@@ -273,12 +316,24 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 		int g = h1 % nGroups;
 		for (;;) {
 			int base = g * DEFAULT_GROUP_SIZE;
-			for (int j = 0; j < DEFAULT_GROUP_SIZE; j++) {
-				int idx = base + j;
-				byte c = ctrl[idx];
-				if (isEmpty(c)) return -1;
-				if (isFull(c) && c == h2 && Objects.equals(keys[idx], key)) {
-					return idx;
+			if (useSimd) {
+				long eqMask = simdEq(ctrl, base, h2);
+				while (eqMask != 0) {
+					int bit = Long.numberOfTrailingZeros(eqMask);
+					int idx = base + bit;
+					if (Objects.equals(keys[idx], key)) return idx;
+					eqMask &= eqMask - 1;
+				}
+				long emptyMask = simdEmpty(ctrl, base);
+				if (emptyMask != 0) return -1;
+			} else {
+				for (int j = 0; j < DEFAULT_GROUP_SIZE; j++) {
+					int idx = base + j;
+					byte c = ctrl[idx];
+					if (isEmpty(c)) return -1;
+					if (isFull(c) && c == h2 && Objects.equals(keys[idx], key)) {
+						return idx;
+					}
 				}
 			}
 			g++;
