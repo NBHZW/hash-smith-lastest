@@ -56,19 +56,18 @@ public class Demo {
 ./gradlew jmh
 ```
 
-### Current Results (ns/op, size = 10,000)
-| Benchmark | ns/op (≈) |
+### Plots
+| get hit | get miss |
 | --- | --- |
-| jdkGetHit | 16.93 |
-| swissGetHit | 24.93 |
-| jdkGetMiss | 14.80 |
-| swissGetMiss | 12.40 |
-| jdkIterate | 47,130 | <!-- ≈47.13 µs -->
-| swissIterate | 21,360 | <!-- ≈21.36 µs -->
-| jdkPutHit | 7.72 |
-| swissPutHit | 12.78 |
-| jdkPutMiss | 31.65 |
-| swissPutMiss | 26.09 |
+| ![CPU: get hit](images/cpu-get-hit.png) | ![CPU: get miss](images/cpu-get-miss.png) |
+
+| put hit | put miss |
+| --- | --- |
+| ![CPU: put hit](images/cpu-put-hit.png) | ![CPU: put miss](images/cpu-put-miss.png) |
+
+| iterate |  |
+| --- | --- |
+| ![CPU: iterate](images/cpu-iterate.png) |  |
 
 ## Memory Footprint (JOL)
 - JUnit helper at `src/test/java/com/donghyungko/swisstable/MapFootprint.java`
