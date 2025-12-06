@@ -3,6 +3,7 @@ package com.donghyungko.swisstable;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -10,6 +11,7 @@ import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
@@ -18,12 +20,13 @@ import org.openjdk.jmh.annotations.Warmup;
 
 @Warmup(iterations = 3)
 @Measurement(iterations = 5)
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
 public class SwissMapBenchmark {
 
 	@State(Scope.Benchmark)
 	public static class ReadState {
-		@Param({ "1000", "10000" })
+		@Param({ "100", "1000", "10000" })
 		int size;
 
 		SwissMap<Integer, Integer> swiss;
@@ -63,7 +66,7 @@ public class SwissMapBenchmark {
 
 	@State(Scope.Thread)
 	public static class MutateState {
-		@Param({ "1000", "10000" })
+		@Param({ "100", "1000", "10000" })
 		int size;
 
 		int[] keys;
@@ -160,16 +163,16 @@ public class SwissMapBenchmark {
 		return prev == null ? -1 : prev;
 	}
 
-	// ------- mutating: remove -------
-	@Benchmark
-	public int swissRemoveHit(MutateState s) {
-		int k = s.existingKey(1);
-		return s.swiss.remove(k);
-	}
-
-	@Benchmark
-	public int jdkRemoveHit(MutateState s) {
-		int k = s.existingKey(1);
-		return s.jdk.remove(k);
-	}
+//	// ------- mutating: remove -------
+//	@Benchmark
+//	public int swissRemoveHit(MutateState s) {
+//		int k = s.existingKey(1);
+//		return s.swiss.remove(k);
+//	}
+//
+//	@Benchmark
+//	public int jdkRemoveHit(MutateState s) {
+//		int k = s.existingKey(1);
+//		return s.jdk.remove(k);
+//	}
 }

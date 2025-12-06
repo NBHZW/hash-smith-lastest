@@ -36,8 +36,8 @@ jmh {
     warmupIterations = 3
     iterations = 5
     fork = 1
-    benchmarkMode = ['thrpt']
-    timeUnit = 'ms'
+    benchmarkMode = ['avgt']
+    timeUnit = 'ns'
     jvmArgs = ['--add-modules', 'jdk.incubator.vector']
 }
 
