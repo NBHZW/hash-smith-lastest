@@ -36,7 +36,7 @@ public class Demo {
         map.put("a", 1);
         map.put("b", 2);
         map.remove("a");
-        map.put("a", 3);   // tombstone reuse
+        map.put("a", 3);
         System.out.println(map.get("a")); // 3
 
         var scalar = new SwissMap<String, Integer>(SwissMap.Path.SCALAR);
