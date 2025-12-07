@@ -77,8 +77,9 @@ public class Demo {
 ./gradlew test --tests com.donghyungko.hashsmith.MapFootprintTest
 ```
 ### Results
-- SwissMap and RobinHoodMap both use open addressing, reducing space overhead versus `HashMap`.
-- SwissMap uses SIMD-assisted probing and keeps a relatively high default load factor (0.875), fitting more entries per capacity for better memory efficiency.
+- `SwissMap` and `RobinHoodMap` both use open addressing, reducing space overhead versus `HashMap`.
+- `SwissMap` uses SIMD-assisted probing and keeps a relatively high default load factor (0.875), fitting more entries per capacity for better memory efficiency.
+- Smaller value sizes amplify the memory efficiency gap; in payload-light cases, `SwissMap` cuts retained heap by up to 43.7% versus `HashMap`.
 ![Memory Foorprint](images/memory-footprint.png)
 
 ## Documentation
