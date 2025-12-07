@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.openjdk.jol.info.GraphLayout;
 
 /**
- * JUnit helper to print retained heap size for HashMap vs SwissMap.
+ * JUnit helper to print retained heap size for HashMap vs SwissMap vs RobinHoodMap.
  * Run with `./gradlew test --tests com.donghyungko.swisstable.MapFootprint`.
  */
 public class MapFootprintTest {
@@ -37,6 +37,7 @@ public class MapFootprintTest {
 
 		var hash = new HashMap<Integer, Object>();
 		var swiss = new SwissMap<Integer, Object>();
+		var robin = new RobinHoodMap<Integer, Object>();
 
 		Object[] values = new Object[entries];
 		Supplier<Object> factory = valueFactory(payload, valueRnd);
@@ -48,6 +49,7 @@ public class MapFootprintTest {
 			int k = keyRnd.nextInt();
 			hash.put(k, values[i]);
 			swiss.put(k, values[i]);
+			robin.put(k, values[i]);
 		}
 
 		// Reduce transient garbage before measuring
@@ -56,16 +58,20 @@ public class MapFootprintTest {
 
 		long emptyHash = GraphLayout.parseInstance(new HashMap<Integer, Object>()).totalSize();
 		long emptySwiss = GraphLayout.parseInstance(new SwissMap<Integer, Object>()).totalSize();
+		long emptyRobin = GraphLayout.parseInstance(new RobinHoodMap<Integer, Object>()).totalSize();
 
 		long hashSize = GraphLayout.parseInstance(hash).totalSize();
 		long swissSize = GraphLayout.parseInstance(swiss).totalSize();
+		long robinSize = GraphLayout.parseInstance(robin).totalSize();
 
 		double hashPerEntry = (hashSize - emptyHash) / (double) entries;
 		double swissPerEntry = (swissSize - emptySwiss) / (double) entries;
+		double robinPerEntry = (robinSize - emptyRobin) / (double) entries;
 
-		System.out.printf(
-				"payload=%-8s n=%-7d hash=%,dB swiss=%,dB hash/entry=%.1fB swiss/entry=%.1fB (empty: hash=%,dB swiss=%,dB)%n",
-				payload, entries, hashSize, swissSize, hashPerEntry, swissPerEntry, emptyHash, emptySwiss);
+		System.out.printf("payload=%-8s n=%-7d%n", payload, entries);
+		System.out.printf("  hash:  %-,10dB (empty %-,8dB)  per entry: %.1fB%n", hashSize, emptyHash, hashPerEntry);
+		System.out.printf("  swiss: %-,10dB (empty %-,8dB)  per entry: %.1fB%n", swissSize, emptySwiss, swissPerEntry);
+		System.out.printf("  robin: %-,10dB (empty %-,8dB)  per entry: %.1fB%n", robinSize, emptyRobin, robinPerEntry);
 	}
 
 	private static Supplier<Object> valueFactory(Payload payload, Random rnd) {
