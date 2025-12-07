@@ -17,12 +17,11 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 	/* Defaults */
 	private static final int DEFAULT_INITIAL_CAPACITY = 16;
 	private static final double DEFAULT_LOAD_FACTOR = 0.75d;
-	private static final int MAX_PROBE = 200; // guard against overflow of byte dist
 
 	/* Storage */
 	private Object[] keys;
 	private Object[] vals;
-	private byte[] dist; // probe distance (0-based)
+	private int[] dist; // probe distance (0-based)
 	private int size;
 	private int capacity;
 	private int maxLoad;
@@ -67,52 +66,44 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 
 	@Override
 	public V put(K key, V value) {
-		retry:
+		int h = hash(key);
+		int mask = capacity - 1;
+		int idx = h & mask;
+
+		int curDist = 0;
+		K curKey = key;
+		V curVal = value;
+
 		for (;;) {
-			int h = hash(key);
-			int mask = capacity - 1;
-			int idx = h & mask;
-			int curDist = 0;
-
-			K curKey = key;
-			V curVal = value;
-
-			for (;;) {
-				if (curDist >= MAX_PROBE) {
-					// probe too long: grow and retry
+			Object k = keys[idx];
+			if (k == null) {
+				setSlot(idx, curKey, curVal, curDist);
+				size++;
+				if (size > maxLoad) {
 					resize(capacity << 1);
-					continue retry;
 				}
-				Object k = keys[idx];
-				if (k == null) {
-					setSlot(idx, curKey, curVal, curDist);
-					size++;
-					if (size > maxLoad) {
-						resize(capacity << 1);
-					}
-					return null;
-				}
-				if (k.equals(curKey)) {
-					V old = castValue(vals[idx]);
-					vals[idx] = curVal;
-					return old;
-				}
-				int slotDist = dist[idx] & 0xFF; // byte → int (unsigned) to avoid sign extension
-				if (slotDist < curDist) {
-					// Robin Hood swap
-					K swapKey = castKey(k);
-					V swapVal = castValue(vals[idx]);
-					int swapDist = slotDist;
-
-					setSlot(idx, curKey, curVal, curDist);
-
-					curKey = swapKey;
-					curVal = swapVal;
-					curDist = swapDist;
-				}
-				idx = (idx + 1) & mask;
-				curDist++;
+				return null;
 			}
+			if (k.equals(curKey)) {
+				V old = castValue(vals[idx]);
+				vals[idx] = curVal;
+				return old;
+			}
+			int slotDist = dist[idx];
+			if (slotDist < curDist) {
+				// Robin Hood swap
+				K swapKey = castKey(k);
+				V swapVal = castValue(vals[idx]);
+				int swapDist = slotDist;
+
+				setSlot(idx, curKey, curVal, curDist);
+
+				curKey = swapKey;
+				curVal = swapVal;
+				curDist = swapDist;
+			}
+			idx = (idx + 1) & mask;
+			curDist++;
 		}
 	}
 
@@ -148,16 +139,16 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 
 	/* Resize/rebuild helpers */
 	private void resize(int newCapacity) {
-		int cap = ceilPow2(Math.max(DEFAULT_INITIAL_CAPACITY, newCapacity));
+		int targetCap = ceilPow2(Math.max(DEFAULT_INITIAL_CAPACITY, newCapacity));
 		Object[] oldKeys = this.keys;
 		Object[] oldVals = this.vals;
 
-		this.capacity = cap;
-		this.keys = new Object[cap];
-		this.vals = new Object[cap];
-		this.dist = new byte[cap];
+		this.capacity = targetCap;
+		this.keys = new Object[targetCap];
+		this.vals = new Object[targetCap];
+		this.dist = new int[targetCap];
 		this.size = 0;
-		this.maxLoad = calcMaxLoad(cap);
+		this.maxLoad = calcMaxLoad(targetCap);
 
 		if (oldKeys == null || oldVals == null || oldKeys.length == 0) return;
 
@@ -172,12 +163,6 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 			int idx = h & mask; // equivalent to h % capacity
 			int d = 0;
 			while (keys[idx] != null) {
-				if (d >= MAX_PROBE) {
-					resize(capacity << 1);
-					// restart full resize with larger capacity
-					resize(capacity);
-					return;
-				}
 				idx = (idx + 1) & mask;
 				d++;
 			}
@@ -221,7 +206,7 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 			Object k = keys[idx];
 			if (k == null) return -1;
 			if (k.equals(key)) return idx;
-			int slotDist = dist[idx] & 0xFF; // byte → int (unsigned) to avoid sign extension
+			int slotDist = dist[idx];
 			if (slotDist < d) return -1; // early stop
 			idx = (idx + 1) & mask;
 			d++;
@@ -239,7 +224,7 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 				clearSlot(cur);
 				break;
 			}
-			int nd = dist[next] & 0xFF; // byte → int (unsigned) to avoid sign extension
+			int nd = dist[next];
 			if (nd == 0) { // end of cluster
 				clearSlot(cur);
 				break;
@@ -254,7 +239,7 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 	private void setSlot(int idx, Object key, Object value, int distance) {
 		keys[idx] = key;
 		vals[idx] = value;
-		dist[idx] = (byte) distance;
+		dist[idx] = distance;
 	}
 
 	private void clearSlot(int idx) {
