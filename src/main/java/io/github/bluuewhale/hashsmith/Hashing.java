@@ -30,4 +30,14 @@ final class Hashing {
 	static int smearedHash(Object o) {
 		return smear((o == null) ? 0 : o.hashCode());
 	}
+
+	/**
+	 * Per-table salted variant to decorrelate hash iteration orders.
+	 * Added to avoid the accidentally quadratic reinsertion pattern described here:
+	 * https://accidentallyquadratic.tumblr.com/post/153545455987/rust-hash-iteration-reinsertion
+	 */
+	static int smearedHashWithSalt(Object o, int salt) {
+		int h = (o == null) ? 0 : o.hashCode();
+		return smear(h ^ salt);
+	}
 }

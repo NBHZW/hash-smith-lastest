@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Robin Hood hashing map (null keys NOT allowed, null values allowed).
@@ -26,6 +27,7 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 	private int capacity;
 	private int maxLoad;
 	private double loadFactor = DEFAULT_LOAD_FACTOR;
+	private final int salt;
 
 	public RobinHoodMap() {
 		this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
@@ -38,6 +40,7 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 	public RobinHoodMap(int initialCapacity, double loadFactor) {
 		validateLoadFactor(loadFactor);
 		this.loadFactor = loadFactor;
+		this.salt = ThreadLocalRandom.current().nextInt();
 		resize(initialCapacity);
 	}
 
@@ -174,7 +177,7 @@ public class RobinHoodMap<K, V> extends AbstractMap<K, V> {
 	/* Hash helpers */
 	private int hash(Object key) {
 		if (key == null) throw new NullPointerException("Null keys not supported");
-		return Hashing.smear(key.hashCode());
+		return Hashing.smearedHashWithSalt(key, salt);
 	}
 
 	/* Capacity helpers */

@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ThreadLocalRandom;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.VectorSpecies;
 
@@ -45,6 +46,7 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 	private int maxLoad;     // threshold to trigger rehash/resize
 	private boolean useSimd = true;
 	private double loadFactor = DEFAULT_LOAD_FACTOR;
+	private final int salt;
 
 
 	public SwissMap() {
@@ -71,6 +73,7 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 		validateLoadFactor(loadFactor);
 		this.loadFactor = loadFactor;
 		this.useSimd = useSimd;
+		this.salt = ThreadLocalRandom.current().nextInt();
 		init(initialCapacity);
 	}
 
@@ -99,7 +102,7 @@ public class SwissMap<K, V> extends AbstractMap<K, V> {
 	}
 
 	private int hash(Object key) {
-		return Hashing.smearedHash(key);
+		return Hashing.smearedHashWithSalt(key, salt);
 	}
 
 	/* Capacity/load helpers */
