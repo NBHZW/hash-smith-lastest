@@ -79,34 +79,34 @@ class MapSmokeTest {
 		}
 	}
 
-	@ParameterizedTest(name = "{0} populateAndCloneTimings")
+	@ParameterizedTest(name = "{0} insertAndReinsertTimings")
 	@MethodSource("mapSpecs")
-	void populateAndCloneTimings(MapSpec spec) {
+	void insertAndReinsertTimings(MapSpec spec) {
 		int n = 1_000_000;
 
-		long startPopulate = System.nanoTime();
-		var original = newMap(spec, n);
+		long insertStart = System.nanoTime();
+		var one = newMap(spec, n);
 		for (int i = 1; i <= n; i++) {
-			original.put(i, i);
+			one.put(i, i);
 		}
-		long afterPopulate = System.nanoTime();
+		long insertEnd = System.nanoTime();
 
-		long startClone = System.nanoTime();
-		var cloned = newMap(spec, n/2);
-		for (var e : original.entrySet()) {
-			cloned.put(e.getKey(), e.getValue());
+		long reinsertStart = System.nanoTime();
+		var two = newMap(spec, n/2);
+		for (var e : one.entrySet()) {
+			two.put(e.getKey(), e.getValue());
 		}
-		long afterClone = System.nanoTime();
+		long reinsertEnd = System.nanoTime();
 
-		assertEquals(n, original.size());
-		assertEquals(original.size(), cloned.size());
-		assertEquals(original.get(1234), cloned.get(1234));
+		assertEquals(n, one.size());
+		assertEquals(one.size(), two.size());
+		assertEquals(one.get(1234), two.get(1234));
 
-		double populateMs = (afterPopulate - startPopulate) / 1_000_000.0;
-		double cloneMs = (afterClone - startClone) / 1_000_000.0;
+		double insertMs = (insertEnd - insertStart) / 1_000_000.0;
+		double reinsertMs = (reinsertEnd - reinsertStart) / 1_000_000.0;
 		System.out.printf(
-			"%s populate %,d entries: %.2f ms, clone: %.2f ms%n",
-			spec.name(), n, populateMs, cloneMs
+			"%s insert %,d entries: %.2f ms, reinsert: %.2f ms%n",
+			spec.name(), n, insertMs, reinsertMs
 		);
 	}
 }
