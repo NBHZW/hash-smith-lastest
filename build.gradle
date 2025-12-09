@@ -20,10 +20,12 @@ repositories {
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.eclipse.collections:eclipse-collections:11.1.0'
     testImplementation 'org.openjdk.jol:jol-core:0.17'
 
     jmhImplementation 'org.openjdk.jmh:jmh-core:1.37'
     jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
+    jmhImplementation 'org.eclipse.collections:eclipse-collections:11.1.0'
 }
 
 test {

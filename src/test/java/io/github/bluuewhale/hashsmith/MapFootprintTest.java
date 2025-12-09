@@ -1,10 +1,17 @@
 package io.github.bluuewhale.hashsmith;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
+import java.util.Map;
+import java.util.stream.Stream;
+import java.nio.charset.StandardCharsets;
 
-import org.junit.jupiter.api.Test;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.Arguments;
 import org.openjdk.jol.info.GraphLayout;
 
 /**
@@ -13,81 +20,71 @@ import org.openjdk.jol.info.GraphLayout;
  */
 public class MapFootprintTest {
 
-	private static final int[] SIZES = { 100, 1_000, 10_000, 100_000 };
-	private static final long SEED = 1234L;
+	private static final int MAX_ENTRIES = 1_000_000;
+	private static final int STEP = 50_000;
 	private static final int SHORT_STR_LEN = 8;
 	private static final int LONG_STR_LEN = 100;
+
+	private record MapSpec(String name, Supplier<Map<Integer, Object>> supplier) {
+		Map<Integer, Object> newMap() {
+			return supplier.get();
+		}
+
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+
+	private static final List<MapSpec> MAP_SPECS = List.of(
+//			new MapSpec("HashMap", HashMap::new)
+			new MapSpec("SwissMap", SwissMap::new),
+			new MapSpec("RobinHoodMap", RobinHoodMap::new),
+			new MapSpec("UnifiedMap", UnifiedMap::new)
+	);
 
 	private enum Payload {
 		BOOLEAN, INT, SHORT_STR, LONG_STR
 	}
 
-	@Test
-	void printFootprint() {
-		for (Payload payload : Payload.values()) {
-			for (int n : SIZES) {
-				measure(n, payload);
-			}
-		}
-	}
+    private static Stream<Arguments> payloadsAndMaps() {
+        return MAP_SPECS.stream()
+                .flatMap(spec -> Stream.of(Payload.values()).map(p -> Arguments.of(spec, p)));
+    }
 
-	private static void measure(int entries, Payload payload) {
-		var keyRnd = new Random(SEED);
-		var valueRnd = new Random(SEED);
+    private static void measure(Map<Integer, Object> map, String mapName, Payload payload) {
+        Random rnd = new Random();
 
-		var hash = new HashMap<Integer, Object>();
-		var swiss = new SwissMap<Integer, Object>();
-		var robin = new RobinHoodMap<Integer, Object>();
+        for (int i = 0; i <= MAX_ENTRIES; i++) {
+            map.put(rnd.nextInt(), payloadValue(payload, rnd));
 
-		Object[] values = new Object[entries];
-		Supplier<Object> factory = valueFactory(payload, valueRnd);
-		for (int i = 0; i < entries; i++) {
-			values[i] = factory.get();
-		}
+            if (i % STEP == 0 && i > 0) {
+                long size = GraphLayout.parseInstance(map).totalSize();
+                System.out.printf("map=%-10s payload=%-8s n=%-7d size=%-,12dB%n",
+                        mapName, payload, i, size);
+            }
+        }
+    }
 
-		for (int i = 0; i < entries; i++) {
-			int k = keyRnd.nextInt();
-			hash.put(k, values[i]);
-			swiss.put(k, values[i]);
-			robin.put(k, values[i]);
-		}
-
-		// Reduce transient garbage before measuring
-		System.gc();
-		System.gc();
-
-		long emptyHash = GraphLayout.parseInstance(new HashMap<Integer, Object>()).totalSize();
-		long emptySwiss = GraphLayout.parseInstance(new SwissMap<Integer, Object>()).totalSize();
-		long emptyRobin = GraphLayout.parseInstance(new RobinHoodMap<Integer, Object>()).totalSize();
-
-		long hashSize = GraphLayout.parseInstance(hash).totalSize();
-		long swissSize = GraphLayout.parseInstance(swiss).totalSize();
-		long robinSize = GraphLayout.parseInstance(robin).totalSize();
-
-		double hashPerEntry = (hashSize - emptyHash) / (double) entries;
-		double swissPerEntry = (swissSize - emptySwiss) / (double) entries;
-		double robinPerEntry = (robinSize - emptyRobin) / (double) entries;
-
-		System.out.printf("payload=%-8s n=%-7d%n", payload, entries);
-		System.out.printf("  hash:  %-,10dB (empty %-,8dB)  per entry: %.1fB%n", hashSize, emptyHash, hashPerEntry);
-		System.out.printf("  swiss: %-,10dB (empty %-,8dB)  per entry: %.1fB%n", swissSize, emptySwiss, swissPerEntry);
-		System.out.printf("  robin: %-,10dB (empty %-,8dB)  per entry: %.1fB%n", robinSize, emptyRobin, robinPerEntry);
-	}
-
-	private static Supplier<Object> valueFactory(Payload payload, Random rnd) {
+    private static Object payloadValue(Payload payload, Random rnd) {
 		return switch (payload) {
-		case INT -> rnd::nextInt;
-		case BOOLEAN -> rnd::nextBoolean;
-		case SHORT_STR -> () -> randomAscii(rnd, SHORT_STR_LEN);
-		case LONG_STR -> () -> randomAscii(rnd, LONG_STR_LEN);
+			case INT -> rnd.nextInt();
+			case BOOLEAN -> rnd.nextBoolean();
+			case SHORT_STR -> randomUtf8(rnd, SHORT_STR_LEN);
+			case LONG_STR -> randomUtf8(rnd, LONG_STR_LEN);
 		};
+    }
+
+	private static String randomUtf8(Random rnd, int len) {
+		byte[] buf = new byte[len];
+		rnd.nextBytes(buf);
+		return new String(buf, StandardCharsets.UTF_8);
 	}
 
-	private static String randomAscii(Random rnd, int len) {
-		char[] buf = new char[len];
-		for (int i = 0; i < len; i++) {
-			buf[i] = (char) ('a' + rnd.nextInt(26));
-		}
-		return new String(buf);
+
+	@ParameterizedTest(name = "{0} - {1} footprint growth")
+	@MethodSource("payloadsAndMaps")
+	void printFootprint(MapSpec mapSpec, Payload payload) {
+		measure(mapSpec.newMap(), mapSpec.name(), payload);
 	}
 }
