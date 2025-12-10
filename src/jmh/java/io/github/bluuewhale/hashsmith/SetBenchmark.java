@@ -3,8 +3,11 @@ package io.github.bluuewhale.hashsmith;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -33,6 +36,8 @@ public class SetBenchmark {
 
 		SwissSet<String> swiss;
 		HashSet<String> jdk;
+		ObjectOpenHashSet<String> fastutil;
+		UnifiedSet<String> unified;
 		String[] keys;
 		String[] misses;
 		int nextKeyIndex;
@@ -59,9 +64,13 @@ public class SetBenchmark {
 
 			swiss = new SwissSet<>();
 			jdk = new HashSet<>();
+			fastutil = new ObjectOpenHashSet<>();
+			unified = new UnifiedSet<>();
 			for (String k : keys) {
 				swiss.add(k);
 				jdk.add(k);
+				fastutil.add(k);
+				unified.add(k);
 			}
 		}
 
@@ -89,6 +98,8 @@ public class SetBenchmark {
 		int missIndex;
 		SwissSet<String> swiss;
 		HashSet<String> jdk;
+		ObjectOpenHashSet<String> fastutil;
+		UnifiedSet<String> unified;
 		Random rnd;
 
 		@Setup(Level.Trial)
@@ -113,9 +124,13 @@ public class SetBenchmark {
 		public void resetSets() {
 			swiss = new SwissSet<>();
 			jdk = new HashSet<>();
+			fastutil = new ObjectOpenHashSet<>();
+			unified = new UnifiedSet<>();
 			for (String k : keys) {
 				swiss.add(k);
 				jdk.add(k);
+				fastutil.add(k);
+				unified.add(k);
 			}
 			hitIndex = 0;
 			missIndex = 0;
@@ -142,10 +157,22 @@ public class SetBenchmark {
 	public boolean jdkContainsHit(ReadState s) { return s.jdk.contains(s.nextHitKey()); }
 
 	@Benchmark
+	public boolean fastutilContainsHit(ReadState s) { return s.fastutil.contains(s.nextHitKey()); }
+
+	@Benchmark
+	public boolean unifiedContainsHit(ReadState s) { return s.unified.contains(s.nextHitKey()); }
+
+	@Benchmark
 	public boolean swissContainsMiss(ReadState s) { return s.swiss.contains(s.nextMissKey()); }
 
 	@Benchmark
 	public boolean jdkContainsMiss(ReadState s) { return s.jdk.contains(s.nextMissKey()); }
+
+	@Benchmark
+	public boolean fastutilContainsMiss(ReadState s) { return s.fastutil.contains(s.nextMissKey()); }
+
+	@Benchmark
+	public boolean unifiedContainsMiss(ReadState s) { return s.unified.contains(s.nextMissKey()); }
 
 	// add hit/miss
 	@Benchmark
@@ -155,10 +182,22 @@ public class SetBenchmark {
 	public boolean jdkAddHit(MutateState s) { return s.jdk.add(s.nextHitKey()); }
 
 	@Benchmark
+	public boolean fastutilAddHit(MutateState s) { return s.fastutil.add(s.nextHitKey()); }
+
+	@Benchmark
+	public boolean unifiedAddHit(MutateState s) { return s.unified.add(s.nextHitKey()); }
+
+	@Benchmark
 	public boolean swissAddMiss(MutateState s) { return s.swiss.add(s.nextMissKey()); }
 
 	@Benchmark
 	public boolean jdkAddMiss(MutateState s) { return s.jdk.add(s.nextMissKey()); }
+
+	@Benchmark
+	public boolean fastutilAddMiss(MutateState s) { return s.fastutil.add(s.nextMissKey()); }
+
+	@Benchmark
+	public boolean unifiedAddMiss(MutateState s) { return s.unified.add(s.nextMissKey()); }
 
 	private static String nextUuidString(Random rnd) {
 		return new UUID(rnd.nextLong(), rnd.nextLong()).toString();
