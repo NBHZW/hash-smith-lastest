@@ -82,17 +82,49 @@ dependencies {
 ./gradlew test         # JUnit 5 tests
 ```
 
-## Memory Footprint (JOL)
-- Compares retained heap of `HashMap` vs `SwissMap` vs `RobinHoodMap` for multiple payload sizes.
-- Run:
-```bash
-./gradlew test --tests io.github.bluuewhale.hashsmith.MapFootprintTest
-```
+## Memory Footprint 
+- Compares retained heap for both maps (`HashMap` vs `SwissMap` vs `RobinHoodMap`) and sets (`HashSet` vs `SwissSet`).
 ### Results
-- `SwissMap` and `RobinHoodMap` both use open addressing, reducing space overhead versus `HashMap`.
-- `SwissMap` uses SIMD-assisted probing and keeps a relatively high default load factor (0.875), fitting more entries per capacity for better memory efficiency.
-- Smaller value sizes amplify the memory efficiency gap; in payload-light cases, `SwissMap` cuts retained heap by up to 53.3% versus `HashMap`.
-![Memory Foorprint](images/memory-boolean.png)
+- Maps: `SwissMap` and `RobinHoodMap` use open addressing to cut space; `SwissMap` keeps a 0.875 default load factor and shows up to 53.3% retained-heap reduction in payload-light cases vs `HashMap`.
+- Sets: `SwissSet` (SwissHashSet) mirrors the SwissTable layout with SIMD control-byte probing and reuses tombstones to stay denser than `HashSet` across tested payloads, showing up to ~62% retained-heap reduction in lighter payload cases.
+<table>
+  <tr>
+    <th>Map</th>
+    <th>Set</th>
+  </tr>
+  <tr>
+    <td><img src="images/map-memory-bool.png" alt="HashMap Memory Footprint" width="420"></td>
+    <td><img src="images/set-memory-uuid.png" alt="HashSet Memory Footprint" width="420"></td>
+  </tr>
+</table>
+
+## Benchmark (JMH, CPU ns/op)
+```bash
+./gradlew jmh
+```
+
+### Results
+| get hit | get miss |
+| --- | --- |
+| ![CPU: get hit](images/cpu-get-hit.png) | ![CPU: get miss](images/cpu-get-miss.png) |
+
+| put hit | put miss |
+| --- | --- |
+| ![CPU: put hit](images/cpu-put-hit.png) | ![CPU: put miss](images/cpu-put-miss.png) |
+
+
+## Documentation
+- SwissMap: `docs/SwissMap.md`
+- RobinHoodMap: `docs/RobinHoodMap.md`
+
+## Contributing
+1) Open an issue for bugs/ideas  
+2) Work on a feature branch and open a PR  
+3) Keep tests/JMH green before submitting
+
+## License
+- This project is licensed under the MIT License. See [`LICENSE`](./LICENSE) for details.
+
 
 ## Benchmark (JMH, CPU ns/op)
 ```bash
