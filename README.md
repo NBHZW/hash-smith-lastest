@@ -112,10 +112,6 @@ dependencies {
 | ![CPU: put hit](images/map-cpu-put-hit.png) | ![CPU: put miss](images/map-cpu-put-miss.png) |
 
 
-## Documentation
-- SwissMap: `docs/SwissMap.md`
-- RobinHoodMap: `docs/RobinHoodMap.md`
-
 ## Contributing
 1) Open an issue for bugs/ideas  
 2) Work on a feature branch and open a PR  
