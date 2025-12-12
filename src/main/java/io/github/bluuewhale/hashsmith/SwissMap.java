@@ -243,6 +243,20 @@ public class SwissMap<K, V> extends AbstractArrayMap<K, V> {
 		return old;
 	}
 
+	/**
+	 * Testing/benchmark only: delete without leaving a tombstone.
+	 * Fills the hole via backward shift to keep probing contiguous.
+	 */
+	public V removeWithoutTombstone(Object key) {
+		int idx = findIndex(key);
+		if (idx < 0) return null;
+		@SuppressWarnings("unchecked")
+		V old = (V) vals[idx];
+		backshiftDelete(idx);
+		size--;
+		return old;
+	}
+
 	@Override
 	public void putAll(Map<? extends K, ? extends V> m) {
 		for (Entry<? extends K, ? extends V> e : m.entrySet()) {
@@ -317,6 +331,61 @@ public class SwissMap<K, V> extends AbstractArrayMap<K, V> {
 		vals[idx] = value;
 		size++;
 		return null;
+	}
+
+	/**
+	 * Backward shift delete: pull following entries left to fill the hole with no tombstones.
+	 */
+	private void backshiftDelete(int hole) {
+		// Null out immediately so GC can reclaim.
+		keys[hole] = null;
+		vals[hole] = null;
+
+		int nGroups = numGroups();
+		int mask = nGroups - 1;
+		int gsize = DEFAULT_GROUP_SIZE;
+
+		for (;;) {
+			int next = (hole + 1 == capacity) ? 0 : hole + 1;
+			byte c = ctrl[next];
+
+			// EMPTY means end of cluster; finish by marking current hole empty.
+			if (isEmpty(c)) {
+				ctrl[hole] = EMPTY;
+				return;
+			}
+
+			// Clear any existing tombstone and move hole forward.
+			if (isDeleted(c)) {
+				if (tombstones > 0) tombstones--;
+				ctrl[hole] = EMPTY;
+				hole = next;
+				continue;
+			}
+
+			// Compute how far next is from its home group.
+			int h = hash(keys[next]);
+			int home = h1(h) & mask;
+			int group = next / gsize;
+			int dist = (group - home + nGroups) & mask;
+
+			// If entry is in its home group, stop shifting and mark hole empty.
+			if (dist == 0) {
+				ctrl[hole] = EMPTY;
+				return;
+			}
+
+			// Move displaced entry into the hole.
+			ctrl[hole] = c;
+			keys[hole] = keys[next];
+			vals[hole] = vals[next];
+
+			// 새 hole은 next 위치
+			keys[next] = null;
+			vals[next] = null;
+			ctrl[next] = EMPTY;
+			hole = next;
+		}
 	}
 
 	@SuppressWarnings("unchecked")
