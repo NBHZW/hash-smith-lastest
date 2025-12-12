@@ -102,6 +102,7 @@ dependencies {
 ## Benchmark (JMH, CPU ns/op)
 - At high load factors SwissMap keeps competitive throughput against other open-addressing tables and stays close to JDK HashMap performance. 
 - In put-heavy workloads, SwissMap shows up to ~60% better `put` throughput than JDK HashMap.
+
 | get hit | get miss |
 | --- | --- |
 | ![CPU: get hit](images/map-cpu-get-hit.png) | ![CPU: get miss](images/map-cpu-get-miss.png) |
