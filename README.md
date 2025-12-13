@@ -16,8 +16,8 @@
 
 ## Implementations
 - **SwissMap**: Google's SwissTable-inspired design with SIMD probing and tombstone reuse. See `docs/SwissMap.md` for details.
-- **RobinHoodMap**: Robin Hood hashing with backward-shift deletion. See `docs/RobinHoodMap.md` for detailed behavior and notes.
 - **SwissSet**: SwissTable-style hash set with SIMD control-byte probing, tombstone reuse, and null-element support 
+- **RobinHoodMap**: Robin Hood hashing with backward-shift deletion. See `docs/RobinHoodMap.md` for detailed behavior and notes.
 
 ## Quick Start
 ```java
@@ -33,14 +33,7 @@ public class Demo {
         swiss.put("b", 2);
         System.out.println(swiss.get("a")); // 1
 
-        // RobinHoodMap
-        var robin = new RobinHoodMap<String, Integer>();
-        robin.put("x", 42);
-        robin.put("y", 99);
-        robin.remove("x");
-        System.out.println(robin.get("y")); // 99
-
-        // SwissSet / SwissHashSet
+        // SwissSet
         var swissSet = new SwissSet<String>();
         swissSet.add("k");
         swissSet.add(null); // nulls allowed
@@ -83,10 +76,10 @@ dependencies {
 ```
 
 ## Memory Footprint 
-- Compares retained heap for both maps (`HashMap` vs `SwissMap` vs `RobinHoodMap`) and sets (`HashSet` vs `SwissSet`).
+- Compares retained heap for both maps (`HashMap` vs `SwissMap` vs fastutil `Object2ObjectOpenHashMap` vs Eclipse Collections `UnifiedMap`) and sets (`HashSet` vs `SwissSet` vs fastutil `ObjectOpenHashSet` vs Eclipse Collections `UnifiedSet`).
 - Set benchmarks use UUID `String` keys (HashSet, SwissSet, ObjectOpenHashSet, UnifiedSet). Primitive-specialized collections (e.g., fastutil primitive sets) are excluded because their memory profile is driven by primitive storage, whereas these tests target general reference workloads.
 ### Results
-- Maps: `SwissMap` and `RobinHoodMap` use open addressing to cut space; `SwissMap` keeps a 0.875 default load factor and shows up to 53.3% retained-heap reduction in payload-light cases vs `HashMap`.
+- Maps: `SwissMap` uses open addressing to cut space; `SwissMap` keeps a 0.875 default load factor and shows up to 53.3% retained-heap reduction in payload-light cases vs `HashMap`.
 - Sets: `SwissSet` (SwissHashSet) mirrors the SwissTable layout with SIMD control-byte probing and reuses tombstones to stay denser than `HashSet` across tested payloads, showing up to ~62% retained-heap reduction in lighter payload cases.
 <table>
   <tr>

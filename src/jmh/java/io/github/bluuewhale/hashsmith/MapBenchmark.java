@@ -64,7 +64,6 @@ public class MapBenchmark {
 		int size;
 
 		SwissMap<String, Object> swiss;
-		RobinHoodMap<String, Object> robin;
 		Object2ObjectOpenHashMap<String, Object> fastutil;
 		UnifiedMap<String, Object> unified;
 		HashMap<String, Object> jdk;
@@ -94,13 +93,11 @@ public class MapBenchmark {
 			nextKeyIndex = 0;
 			nextMissIndex = 0;
 			swiss = new SwissMap<>();
-			robin = new RobinHoodMap<>();
 			fastutil = new Object2ObjectOpenHashMap<>();
 			unified = new UnifiedMap<>();
 			jdk = new HashMap<>();
 			for (int i = 0; i < size; i++) {
 				swiss.put(keys[i], "dummy");
-				robin.put(keys[i], "dummy");
 				fastutil.put(keys[i], "dummy");
 				unified.put(keys[i], "dummy");
 				jdk.put(keys[i], "dummy");
@@ -129,7 +126,6 @@ public class MapBenchmark {
 		String[] misses;
 		Random rnd;
 		SwissMap<String, Object> swiss;
-		RobinHoodMap<String, Object> robin;
 		Object2ObjectOpenHashMap<String, Object> fastutil;
 		UnifiedMap<String, Object> unified;
 		HashMap<String, Object> jdk;
@@ -146,13 +142,11 @@ public class MapBenchmark {
 		public void resetMaps() {
 			idx = 0;
 			swiss = new SwissMap<>();
-			robin = new RobinHoodMap<>();
 			fastutil = new Object2ObjectOpenHashMap<>();
 			unified = new UnifiedMap<>();
 			jdk = new HashMap<>();
 			for (int i = 0; i < size; i++) {
 				swiss.put(keys[i], "dummy");
-				robin.put(keys[i], "dummy");
 				fastutil.put(keys[i], "dummy");
 				unified.put(keys[i], "dummy");
 				jdk.put(keys[i], "dummy");
@@ -187,7 +181,6 @@ public class MapBenchmark {
 		String nextKey;
 
 		SwissMap<String, Object> swiss;
-		RobinHoodMap<String, Object> robin;
 		Object2ObjectOpenHashMap<String, Object> fastutil;
 		UnifiedMap<String, Object> unified;
 		HashMap<String, Object> jdk;
@@ -204,13 +197,11 @@ public class MapBenchmark {
 		public void resetMaps() {
 			idx = 0;
 			swiss = new SwissMap<>();
-			robin = new RobinHoodMap<>();
 			fastutil = new Object2ObjectOpenHashMap<>();
 			unified = new UnifiedMap<>();
 			jdk = new HashMap<>();
 			for (int i = 0; i < size; i++) {
 				swiss.put(keys[i], "dummy");
-				robin.put(keys[i], "dummy");
 				fastutil.put(keys[i], "dummy");
 				unified.put(keys[i], "dummy");
 				jdk.put(keys[i], "dummy");
@@ -227,7 +218,6 @@ public class MapBenchmark {
 		public void beforeInvocation() {
 			String evictKey = keys[idx];
 			swiss.removeWithoutTombstone(evictKey); // SwissMap: delete without tombstones to keep load factor clean
-			robin.remove(evictKey);
 			fastutil.remove(evictKey);
 			unified.remove(evictKey);
 			jdk.remove(evictKey);
@@ -252,11 +242,6 @@ public class MapBenchmark {
 	}
 
 //	@Benchmark
-	public void robinGetHit(ReadState s, Blackhole bh) {
-        bh.consume(s.robin.get(s.nextHitKey()));
-	}
-
-//	@Benchmark
 	public void fastutilGetHit(ReadState s, Blackhole bh) {
         bh.consume(s.fastutil.get(s.nextHitKey()));
 	}
@@ -274,11 +259,6 @@ public class MapBenchmark {
 //	@Benchmark
 	public void swissGetMiss(ReadState s, Blackhole bh) {
 		bh.consume(s.swiss.get(s.nextMissingKey()));
-	}
-
-//	@Benchmark
-	public void robinGetMiss(ReadState s, Blackhole bh) {
-        bh.consume(s.robin.get(s.nextMissingKey()));
 	}
 
 //	@Benchmark
@@ -336,15 +316,6 @@ public class MapBenchmark {
 	public void jdkPutMiss(PutMissState s, Blackhole bh) {
         bh.consume(s.jdk.put(s.nextMissKey(), s.nextValue()));
 	}
-
-
-    //	@Benchmark
-    public void robinIterate(ReadState s, Blackhole bh) {
-        for (var e : s.robin.entrySet()) {
-            bh.consume(e.getKey());
-            bh.consume(e.getValue());
-        }
-    }
 
     //	@Benchmark
     public void fastutilIterate(ReadState s, Blackhole bh) {
