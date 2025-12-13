@@ -97,7 +97,8 @@ public class SwissSet<E> extends AbstractSet<E> {
 		int g = h1 & mask;
 		for (;;) {
 			int base = g * DEFAULT_GROUP_SIZE;
-			long eqMask = simdEq(ctrl, base, h2);
+			ByteVector v = loadCtrlVector(base);
+			long eqMask = v.eq(h2).toLong();
 			while (eqMask != 0) {
 				int bit = Long.numberOfTrailingZeros(eqMask);
 				int idx = base + bit;
@@ -105,10 +106,10 @@ public class SwissSet<E> extends AbstractSet<E> {
 				eqMask &= eqMask - 1; // clear LSB
 			}
 			if (firstTombstone < 0) {
-				long delMask = simdDeleted(ctrl, base);
+				long delMask = v.eq(DELETED).toLong();
 				if (delMask != 0) firstTombstone = base + Long.numberOfTrailingZeros(delMask);
 			}
-			long emptyMask = simdEmpty(ctrl, base);
+			long emptyMask = v.eq(EMPTY).toLong();
 			if (emptyMask != 0) {
 				int idx = base + Long.numberOfTrailingZeros(emptyMask);
 				int target = (firstTombstone >= 0) ? firstTombstone : idx;
@@ -167,13 +168,10 @@ public class SwissSet<E> extends AbstractSet<E> {
 	private boolean isDeleted(byte c) { return c == DELETED; }
 	private boolean isFull(byte c) { return c >= 0 && c <= H2_MASK; }
 
-	private long simdEq(byte[] array, int base, byte value) {
-		ByteVector v = ByteVector.fromArray(SPECIES, array, base);
-		return v.eq(value).toLong();
+	/* SIMD helpers: load once per group and reuse the ByteVector for multiple comparisons */
+	private ByteVector loadCtrlVector(int base) {
+		return ByteVector.fromArray(SPECIES, ctrl, base);
 	}
-
-	private long simdEmpty(byte[] array, int base) { return simdEq(array, base, EMPTY); }
-	private long simdDeleted(byte[] array, int base) { return simdEq(array, base, DELETED); }
 
 	private void maybeRehash() {
 		boolean overMaxLoad = (size + tombstones) >= maxLoad;
@@ -241,7 +239,8 @@ public class SwissSet<E> extends AbstractSet<E> {
 		int g = h1 & mask;
 		for (;;) {
 			int base = g * DEFAULT_GROUP_SIZE;
-			long eqMask = simdEq(ctrl, base, h2);
+			ByteVector v = loadCtrlVector(base);
+			long eqMask = v.eq(h2).toLong();
 			while (eqMask != 0) {
 				int bit = Long.numberOfTrailingZeros(eqMask);
 				int idx = base + bit;
@@ -250,7 +249,7 @@ public class SwissSet<E> extends AbstractSet<E> {
 				}
 				eqMask &= eqMask - 1;
 			}
-			long emptyMask = simdEmpty(ctrl, base);
+			long emptyMask = v.eq(EMPTY).toLong();
 			if (emptyMask != 0) {
 				return -1;
 			}
@@ -314,7 +313,9 @@ public class SwissSet<E> extends AbstractSet<E> {
 				keys[last] = null;
 				size--;
 				tombstones++;
-				maybeRehash();
+				// NOTE: do not rehash from iterator.remove().
+				// Some JDK algorithms (e.g. AbstractCollection.retainAll) prefetch iterator state (next index) before calling remove().
+				// Rehash would rebuild ctrl/keys and can invalidate that prefetched index, causing the iterator to yield null/empty slots.
 			}
 			last = -1;
 		}
