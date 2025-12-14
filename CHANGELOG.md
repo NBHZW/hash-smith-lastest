@@ -1,5 +1,8 @@
 # Changelog
 ## Unreleased
+### Added
+### Fixed
+### Changed
 
 ## 0.1.6
 - Added `SwissSwarMap`: SWAR-based SwissTable variant (8-slot groups, packed control bytes) plus JMH benchmarks alongside SwissMap.
