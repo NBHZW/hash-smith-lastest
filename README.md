@@ -5,11 +5,12 @@
 [![javadoc](https://javadoc.io/badge2/io.github.bluuewhale/hashsmith/javadoc.svg)](https://javadoc.io/doc/io.github.bluuewhale/hashsmith)
 [![Status: experimental](https://img.shields.io/badge/status-experimental-orange.svg)](#overview)
 
+> ⚠️ This project is experimental and not ready for production use.
+
 <p align="center">
   <img src="images/logo.png" alt="HashSmith logo" width="330">
 </p>
 
-> ⚠️ This project is experimental and not ready for production use.
 
 ## Overview
 - HashSmith provides multiple high-performance hash table implementations optimized for speed and memory efficiency on modern JVMs.
